@@ -11,13 +11,15 @@ import java.io.IOException;
 import java.util.Timer;
 import java.util.TimerTask;
 
+import static java.lang.Math.floor;
+
 class Pult extends JFrame {
     private SerialPort serialPort;
     private ComPortList comPortList = new ComPortList();
-    private JSlider ust = new JSlider(JSlider.HORIZONTAL, 10, 50, 20);
+    private JSlider ust = new JSlider(JSlider.HORIZONTAL, 5, 50, 20);
     private JRadioButton[] radioButton = new JRadioButton[3];
     private byte[] data = new byte[2];
-    private boolean setOk = false;
+    //private boolean setOk = false;
     Pult() throws HeadlessException {
         super("Пульт");
         this.setBounds(300, 300, 550, 400);
@@ -25,6 +27,8 @@ class Pult extends JFrame {
         setLayout(new MigLayout());
         add(comPortList, "gap");
         JButton openport = new JButton("Открыть порт");
+        JButton closeport = new JButton("Закрыть порт");
+        closeport.setEnabled(false);
         JLabel amperaj = new JLabel("0.0");
         openport.addActionListener(e -> {
             serialPort = new SerialPort((String) comPortList.getSelectedItem());
@@ -43,7 +47,7 @@ class Pult extends JFrame {
                             try {
                                 int amps = (new DataInputStream(new ByteArrayInputStream(inData, 0, 2))).readUnsignedShort();
                                 amperaj.setText(String.valueOf(amps));
-                                setOk = true;
+                                //setOk = true;
                             } catch (IOException e1) {
                                 e1.printStackTrace();
                             }
@@ -52,17 +56,20 @@ class Pult extends JFrame {
                         }
                     }
                 });
+                openport.setEnabled(false);
+                closeport.setEnabled(true);
             } catch (SerialPortException e1) {
                 e1.printStackTrace();
             }
         });
         add(openport, "gap 10mm");
-        JButton closeport = new JButton("Закрыть порт");
         closeport.addActionListener(e -> {
             if (serialPort != null) {
                 if (serialPort.isOpened()) {
                     try {
                         serialPort.closePort();
+                        openport.setEnabled(true);
+                        closeport.setEnabled(false);
                     } catch (SerialPortException e1) {
                         e1.printStackTrace();
                     }
@@ -112,12 +119,7 @@ class Pult extends JFrame {
             public void run() {
                 if (serialPort != null) {
                     if (serialPort.isOpened()) {
-                        data[0] = (byte) ust.getValue();
-                        if (!setOk) {
-                            data[1] |= 0x06;
-                        } else {
-                            setOk = false;
-                        }
+                        data[0] = (byte) ((int) floor(150*ust.getValue()/50));
                         try {
                             serialPort.writeBytes(data);
                         } catch (SerialPortException e) {
@@ -127,7 +129,7 @@ class Pult extends JFrame {
                 }
             }
         };
-        timer.schedule(timerTask, 0, 1000);
+        timer.schedule(timerTask, 0, 500);
         pack();
         setResizable(false);
         setVisible(true);
