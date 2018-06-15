@@ -18,8 +18,8 @@ class Pult extends JFrame {
     private ComPortList comPortList = new ComPortList();
     private JSlider ust = new JSlider(JSlider.HORIZONTAL, 5, 50, 20);
     private JRadioButton[] radioButton = new JRadioButton[3];
-    private byte[] data = new byte[2];
-    //private boolean setOk = false;
+    volatile private byte[] data = new byte[2];
+    volatile private boolean setOk = true;
     Pult() throws HeadlessException {
         super("Пульт");
         this.setBounds(300, 300, 550, 400);
@@ -35,7 +35,7 @@ class Pult extends JFrame {
             try {
                 serialPort.openPort();
                 serialPort.setParams(
-                        SerialPort.BAUDRATE_38400,
+                        SerialPort.BAUDRATE_9600,
                         SerialPort.DATABITS_8,
                         SerialPort.STOPBITS_1,
                         SerialPort.PARITY_NONE);
@@ -46,8 +46,8 @@ class Pult extends JFrame {
                             byte[] inData = serialPort.readBytes(3);
                             try {
                                 int amps = (new DataInputStream(new ByteArrayInputStream(inData, 0, 2))).readUnsignedShort();
-                                amperaj.setText(String.valueOf(amps));
-                                //setOk = true;
+                                amperaj.setText(String.valueOf((float) amps/4096));
+                                setOk = true;
                             } catch (IOException e1) {
                                 e1.printStackTrace();
                             }
@@ -119,9 +119,13 @@ class Pult extends JFrame {
             public void run() {
                 if (serialPort != null) {
                     if (serialPort.isOpened()) {
-                        data[0] = (byte) ((int) floor(150*ust.getValue()/50));
+                        data[0] = (byte) floor(150*ust.getValue()/50);
                         try {
-                            serialPort.writeBytes(data);
+                            if (setOk) {
+                                serialPort.writeBytes(data);
+                            } else {
+                                setOk = false;
+                            }
                         } catch (SerialPortException e) {
                             e.printStackTrace();
                         }
@@ -129,7 +133,7 @@ class Pult extends JFrame {
                 }
             }
         };
-        timer.schedule(timerTask, 0, 500);
+        timer.schedule(timerTask, 0, 300);
         pack();
         setResizable(false);
         setVisible(true);
