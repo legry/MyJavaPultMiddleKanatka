@@ -3,8 +3,9 @@ import jssc.SerialPortException;
 import net.miginfocom.swing.MigLayout;
 
 import javax.swing.*;
+import javax.swing.event.MouseInputListener;
 import java.awt.*;
-import java.awt.event.ActionListener;
+import java.awt.event.*;
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -19,7 +20,7 @@ class Pult extends JFrame {
     private JSlider ust = new JSlider(JSlider.HORIZONTAL, 5, 50, 20);
     private JRadioButton[] radioButton = new JRadioButton[3];
     volatile private byte[] data = new byte[2];
-    volatile private boolean setOk = true;
+    volatile private boolean setOk = true, mseUst = false;
     Pult() throws HeadlessException {
         super("Пульт");
         this.setBounds(300, 300, 550, 400);
@@ -84,6 +85,10 @@ class Pult extends JFrame {
         ust.setMajorTickSpacing(5);
         ust.setPaintTicks(true);
         ust.setPaintLabels(true);
+
+        ust.addMouseWheelListener(e -> {
+            ust.setValue(ust.getValue() + e.getWheelRotation());
+        });
         add(ust, "span, align 50%");
         JPanel hodPanel = new JPanel();
         hodPanel.setLayout(new MigLayout());
@@ -138,5 +143,6 @@ class Pult extends JFrame {
         setResizable(false);
         setVisible(true);
     }
+
 
 }
