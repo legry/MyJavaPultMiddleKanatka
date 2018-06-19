@@ -7,6 +7,7 @@ import java.awt.*;
 import java.awt.event.ActionListener;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.stream.Stream;
 
 import static java.lang.Math.floor;
 
@@ -83,7 +84,7 @@ class Pult extends JFrame {
         ust.setMajorTickSpacing(5);
         ust.setPaintTicks(true);
         ust.setPaintLabels(true);
-
+                //Stream.
         ust.addMouseWheelListener(e -> {
             ust.setValue(ust.getValue() + e.getWheelRotation());
         });
