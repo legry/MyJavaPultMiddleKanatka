@@ -3,12 +3,8 @@ import jssc.SerialPortException;
 import net.miginfocom.swing.MigLayout;
 
 import javax.swing.*;
-import javax.swing.event.MouseInputListener;
 import java.awt.*;
-import java.awt.event.*;
-import java.io.ByteArrayInputStream;
-import java.io.DataInputStream;
-import java.io.IOException;
+import java.awt.event.ActionListener;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -36,14 +32,14 @@ class Pult extends JFrame {
             try {
                 serialPort.openPort();
                 serialPort.setParams(
-                        SerialPort.BAUDRATE_9600,
+                        SerialPort.BAUDRATE_38400,
                         SerialPort.DATABITS_8,
                         SerialPort.STOPBITS_1,
                         SerialPort.PARITY_NONE);
                 serialPort.setEventsMask(SerialPort.MASK_RXCHAR);
                 serialPort.addEventListener(serialPortEvent -> {
                     if (serialPortEvent.isRXCHAR() && (serialPortEvent.getEventValue() == 3)) {
-                        try {
+                        /*try {
                             byte[] inData = serialPort.readBytes(3);
                             try {
                                 int amps = (new DataInputStream(new ByteArrayInputStream(inData, 0, 2))).readUnsignedShort();
@@ -54,7 +50,7 @@ class Pult extends JFrame {
                             }
                         } catch (SerialPortException e1) {
                             e1.printStackTrace();
-                        }
+                        }*/
                     }
                 });
                 openport.setEnabled(false);
@@ -78,9 +74,11 @@ class Pult extends JFrame {
             }
         });
         add(closeport, "gap, wrap");
-        Font font = new Font("Times New Roman", Font.PLAIN, 72);
-        amperaj.setFont(font);
-        add(amperaj, "span, align 50%");
+        /*Font font = new Font("Times New Roman", Font.PLAIN, 72);
+        amperaj.setFont(font);*/
+        Oscil oscil = new Oscil();
+        oscil.setSize(getWidth(),150);
+        add(oscil, "span, align 50%");
         ust.setMinorTickSpacing(1);
         ust.setMajorTickSpacing(5);
         ust.setPaintTicks(true);
@@ -139,10 +137,10 @@ class Pult extends JFrame {
             }
         };
         timer.schedule(timerTask, 0, 300);
-        pack();
-        setResizable(false);
+        //pack();
+
+        //setResizable(false);
         setVisible(true);
     }
-
 
 }
