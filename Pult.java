@@ -8,6 +8,7 @@ import java.awt.event.ActionListener;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static java.lang.Math.*;
 
@@ -18,7 +19,7 @@ class Pult extends JFrame {
     private JSlider ust = new JSlider(JSlider.HORIZONTAL, 5, 50, 20);
     private JRadioButton[] radioButton = new JRadioButton[3];
     volatile private byte[] data = new byte[2];
-    volatile private boolean setOk = true, mseUst = false;
+    //volatile private boolean setOk = true, mseUst = false;
     Pult() throws HeadlessException {
         super("Пульт");
         this.setBounds(300, 300, 550, 400);
@@ -28,7 +29,8 @@ class Pult extends JFrame {
         JButton openport = new JButton("Открыть порт");
         JButton closeport = new JButton("Закрыть порт");
         closeport.setEnabled(false);
-        JLabel amperaj = new JLabel("0.0");
+        //JLabel amperaj = new JLabel("0.0");
+        byte[] dataAccume = new byte[0];
         openport.addActionListener(e -> {
             serialPort = new SerialPort((String) comPortList.getSelectedItem());
             try {
@@ -40,19 +42,13 @@ class Pult extends JFrame {
                         SerialPort.PARITY_NONE);
                 serialPort.setEventsMask(SerialPort.MASK_RXCHAR);
                 serialPort.addEventListener(serialPortEvent -> {
-                    if (serialPortEvent.isRXCHAR() && (serialPortEvent.getEventValue() == 3)) {
-                        /*try {
-                            byte[] inData = serialPort.readBytes(3);
-                            try {
-                                int amps = (new DataInputStream(new ByteArrayInputStream(inData, 0, 2))).readUnsignedShort();
-                                amperaj.setText(String.valueOf((float) amps/4096));
-                                setOk = true;
-                            } catch (IOException e1) {
-                                e1.printStackTrace();
-                            }
+                    if (serialPortEvent.isRXCHAR()) {
+                        try {
+                            byte[] inData = serialPort.readBytes(serialPortEvent.getEventValue());
+                            Stream.concat(Stream.of(dataAccume), Stream.of(inData)).filter(x -> x.equals())
                         } catch (SerialPortException e1) {
                             e1.printStackTrace();
-                        }*/
+                        }
                     }
                 });
                 openport.setEnabled(false);
@@ -78,19 +74,47 @@ class Pult extends JFrame {
         add(closeport, "gap, wrap");
         /*Font font = new Font("Times New Roman", Font.PLAIN, 72);
         amperaj.setFont(font);*/
-        Oscil oscil = new Oscil(IntStream.rangeClosed(0, 10).
-                mapToDouble(x -> x + 0.01).
-                mapToInt(x -> (int) round(50*sin(2*PI*10*(x)))).toArray());
+
+        JSlider ustfreq = new JSlider(JSlider.HORIZONTAL, 1, 10, 5);
+        ustfreq.setMinorTickSpacing(1);
+        ustfreq.setMajorTickSpacing(1);
+        ustfreq.setPaintTicks(true);
+        ustfreq.setPaintLabels(true);
+        ustfreq.addMouseWheelListener(e -> ustfreq.setValue(ustfreq.getValue() + e.getWheelRotation()));
+
+        Oscil oscil = new Oscil(IntStream.rangeClosed(0, 99).
+                map(x -> (int) round(ust.getValue()*sin(2*PI*ustfreq.getValue()*((double) x/100)))).toArray());
         oscil.setSize(getWidth(),150);
         add(oscil, "span, align 50%");
+
         ust.setMinorTickSpacing(1);
         ust.setMajorTickSpacing(5);
         ust.setPaintTicks(true);
         ust.setPaintLabels(true);
-        ust.addMouseWheelListener(e -> {
-            ust.setValue(ust.getValue() + e.getWheelRotation());
-        });
+        ust.addMouseWheelListener(e -> ust.setValue(ust.getValue() + e.getWheelRotation()));
+
+        JLabel ampl = new JLabel("Изменение амплитуды");
+        ampl.setLabelFor(ust);
+        add(ampl, "wrap");
         add(ust, "span, align 50%");
+
+        JLabel freq = new JLabel("Изменение частоты");
+        freq.setLabelFor(ustfreq);
+        add(freq, "wrap");
+        add(ustfreq, "span, align 50%");
+
+        JSlider ustrazv = new JSlider(JSlider.HORIZONTAL, 0, 100, 5);
+        ustrazv.setMinorTickSpacing(5);
+        ustrazv.setMajorTickSpacing(10);
+        ustrazv.setPaintTicks(true);
+        ustrazv.setPaintLabels(true);
+        ustrazv.addMouseWheelListener(e -> ustrazv.setValue(ustrazv.getValue() + e.getWheelRotation()));
+
+        JLabel razr = new JLabel("Изменение развертки");
+        razr.setLabelFor(ustrazv);
+        add(razr, "wrap");
+        add(ustrazv, "span, align 50%");
+
         JPanel hodPanel = new JPanel();
         hodPanel.setLayout(new MigLayout());
         String[] hodTitles = new String[]{"Вперед", "Нейтраль", "Назад"};
@@ -137,15 +161,14 @@ class Pult extends JFrame {
                         }
                     }
                 }*/
-                oscil.addPoints(IntStream.rangeClosed(0, 10).
-                        mapToDouble(x -> x + 0.01).
-                        mapToInt(x -> (int) round(50*sin(2*PI*10*(x)))).toArray());
+                oscil.setRazv(ustrazv.getValue());
+                oscil.addPoints(IntStream.rangeClosed(0, 99).
+                        map(x -> (int) round(ust.getValue()*sin(2*PI*ustfreq.getValue()*((double) x/100)))).toArray());
             }
         };
         timer.schedule(timerTask, 0, 300);
-        //pack();
-
-        //setResizable(false);
+        pack();
+        setResizable(false);
         setVisible(true);
     }
 
