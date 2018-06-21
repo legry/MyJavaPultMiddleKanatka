@@ -7,8 +7,10 @@ import java.awt.*;
 import java.awt.event.ActionListener;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.stream.IntStream;
 
-import static java.lang.Math.floor;
+import static java.lang.Math.*;
+
 
 class Pult extends JFrame {
     private SerialPort serialPort;
@@ -76,14 +78,15 @@ class Pult extends JFrame {
         add(closeport, "gap, wrap");
         /*Font font = new Font("Times New Roman", Font.PLAIN, 72);
         amperaj.setFont(font);*/
-        Oscil oscil = new Oscil();
+        Oscil oscil = new Oscil(IntStream.rangeClosed(0, 10).
+                mapToDouble(x -> x + 0.01).
+                mapToInt(x -> (int) round(50*sin(2*PI*10*(x)))).toArray());
         oscil.setSize(getWidth(),150);
         add(oscil, "span, align 50%");
         ust.setMinorTickSpacing(1);
         ust.setMajorTickSpacing(5);
         ust.setPaintTicks(true);
         ust.setPaintLabels(true);
-
         ust.addMouseWheelListener(e -> {
             ust.setValue(ust.getValue() + e.getWheelRotation());
         });
@@ -120,7 +123,7 @@ class Pult extends JFrame {
         TimerTask timerTask = new TimerTask() {
             @Override
             public void run() {
-                if (serialPort != null) {
+/*                if (serialPort != null) {
                     if (serialPort.isOpened()) {
                         data[0] = (byte) floor(150*ust.getValue()/50);
                         try {
@@ -133,7 +136,10 @@ class Pult extends JFrame {
                             e.printStackTrace();
                         }
                     }
-                }
+                }*/
+                oscil.addPoints(IntStream.rangeClosed(0, 10).
+                        mapToDouble(x -> x + 0.01).
+                        mapToInt(x -> (int) round(50*sin(2*PI*10*(x)))).toArray());
             }
         };
         timer.schedule(timerTask, 0, 300);
