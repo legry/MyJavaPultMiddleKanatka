@@ -3,12 +3,18 @@ import jssc.SerialPortException;
 import net.miginfocom.swing.MigLayout;
 
 import javax.swing.*;
+import javax.swing.border.BevelBorder;
+import javax.swing.border.Border;
 import java.awt.*;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.util.ArrayList;
+import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
 import static java.lang.Math.*;
 
@@ -19,6 +25,7 @@ class Pult extends JFrame {
     private JSlider ust = new JSlider(JSlider.HORIZONTAL, 5, 50, 20);
     private JRadioButton[] radioButton = new JRadioButton[3];
     volatile private byte[] data = new byte[2];
+    private Random rnd = new Random();
     //volatile private boolean setOk = true, mseUst = false;
     Pult() throws HeadlessException {
         super("Пульт");
@@ -42,14 +49,14 @@ class Pult extends JFrame {
                         SerialPort.PARITY_NONE);
                 serialPort.setEventsMask(SerialPort.MASK_RXCHAR);
                 serialPort.addEventListener(serialPortEvent -> {
-                    if (serialPortEvent.isRXCHAR()) {
+                    /*if (serialPortEvent.isRXCHAR()) {
                         try {
                             byte[] inData = serialPort.readBytes(serialPortEvent.getEventValue());
-                            Stream.concat(Stream.of(dataAccume), Stream.of(inData)).filter(x -> x.equals())
+                            //Stream.concat(Stream.of(dataAccume), Stream.of(inData)).filter(x -> x.equals())
                         } catch (SerialPortException e1) {
                             e1.printStackTrace();
                         }
-                    }
+                    }*/
                 });
                 openport.setEnabled(false);
                 closeport.setEnabled(true);
@@ -81,12 +88,19 @@ class Pult extends JFrame {
         ustfreq.setPaintTicks(true);
         ustfreq.setPaintLabels(true);
         ustfreq.addMouseWheelListener(e -> ustfreq.setValue(ustfreq.getValue() + e.getWheelRotation()));
-
-        Oscil oscil = new Oscil(IntStream.rangeClosed(0, 99).
-                map(x -> (int) round(ust.getValue()*sin(2*PI*ustfreq.getValue()*((double) x/100)))).toArray());
-        oscil.setSize(getWidth(),150);
-        add(oscil, "span, align 50%");
-
+        JPopupMenu popup;
+        popup = new JPopupMenu();
+        popup.add(new JMenuItem("Свойства графиков"));
+        Oscil oscil = new Oscil();
+        oscil.setSize(getWidth()-100,100);
+        JPanel panOscil = new JPanel(new MigLayout());
+        panOscil.setSize(getWidth(), 150);
+        panOscil.add(oscil, "align 50% 50%");
+        panOscil.setComponentPopupMenu(popup);
+        Border etched = BorderFactory.createEtchedBorder();
+        Border titled = BorderFactory.createTitledBorder(etched, "Осциллограф");
+        panOscil.setBorder(titled);
+        add(panOscil, "span, align 50%");
         ust.setMinorTickSpacing(1);
         ust.setMajorTickSpacing(5);
         ust.setPaintTicks(true);
@@ -162,8 +176,21 @@ class Pult extends JFrame {
                     }
                 }*/
                 oscil.setRazv(ustrazv.getValue());
-                oscil.addPoints(IntStream.rangeClosed(0, 99).
-                        map(x -> (int) round(ust.getValue()*sin(2*PI*ustfreq.getValue()*((double) x/100)))).toArray());
+                ArrayList<ArrayList<Integer>> curves = new ArrayList<>();
+
+                curves.add(IntStream.rangeClosed(0, 99).
+                        map(x -> (int) round(abs(ust.getValue()*sin(2*PI*ustfreq.getValue()*((double) x/100))))).
+                        boxed().
+                        collect(Collectors.toCollection(ArrayList::new)));
+                curves.add(IntStream.rangeClosed(0, 99).
+                        map(x -> (int) round(ust.getValue()*cos(2*PI*ustfreq.getValue()*((double) x/100)))).
+                        boxed().
+                        collect(Collectors.toCollection(ArrayList::new)));
+                curves.add(IntStream.rangeClosed(0, 99).
+                        map(x -> (int) round(ust.getValue()*sin(2*PI*(ustfreq.getValue()/2)*((double) x/100)))).
+                        boxed().
+                        collect(Collectors.toCollection(ArrayList::new)));
+                oscil.addPoints(curves);
             }
         };
         timer.schedule(timerTask, 0, 300);
