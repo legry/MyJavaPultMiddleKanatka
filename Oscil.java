@@ -1,4 +1,5 @@
 
+import javax.swing.plaf.ColorChooserUI;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -10,6 +11,13 @@ public class Oscil extends Canvas {
     private ArrayList<ArrayList<Integer>> curves;
     private int razv;
     private Image buffer;
+    private ArrayList<Color> colors = new ArrayList<>(3);
+
+    Oscil() {
+        colors.add(Color.GREEN);
+        colors.add(Color.RED);
+        colors.add(Color.BLUE);
+    }
 
     @Override
     public void paint(Graphics g) {
@@ -23,19 +31,25 @@ public class Oscil extends Canvas {
             this.curves.addAll(curves);
         } else {
             Iterator<ArrayList<Integer>> iCurv = this.curves.iterator();
-            curves.stream().sequential().forEach(x -> {
+            curves.stream().parallel().forEach(x -> {
                 ArrayList<Integer> curve = iCurv.next();
                 curve.addAll(x);
-                if (curve.size() * razv > super.getWidth())
-                    curve.removeAll(curve.subList(0, round((float) (curve.size() * razv - super.getWidth()) / razv)));
+                if ((curve.size() - 1) * razv > super.getWidth())
+                    curve.removeAll(curve.subList(0, round((float) ((curve.size() - 1) * razv - super.getWidth()) / razv)));
+
             });
         }
         buffer = createImage(getWidth(), getHeight());
         Graphics2D g2d = (Graphics2D) buffer.getGraphics();
         g2d.drawRect(0, 0, super.getWidth() - 1, super.getHeight() - 1);
+        Iterator<Color> iterColors = colors.iterator();
         curves.stream().sequential().
-                forEach(x -> g2d.drawPolyline(IntStream.rangeClosed(0, x.size() - 1).map(xx -> xx * razv).toArray(),
-                        x.stream().mapToInt(xx -> xx + round(super.getHeight() / 2)).toArray(), x.size()));
+                forEach(x -> {
+                    g2d.setColor(iterColors.next());
+                    g2d.drawPolyline(IntStream.rangeClosed(0, x.size() - 1).map(xx -> xx * razv).toArray(),
+                            x.stream().mapToInt(xx -> xx + round(super.getHeight() / 2)).toArray(), x.size());
+
+                });
         Oscil.super.repaint();
     }
 
