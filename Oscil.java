@@ -35,7 +35,7 @@ public class Oscil extends Canvas {
                 ArrayList<Integer> curve = iCurv.next();
                 curve.addAll(x);
                 if ((curve.size() - 1) * razv > super.getWidth())
-                    curve.removeAll(curve.subList(0, round((float) ((curve.size() - 1) * razv - super.getWidth()) / razv)));
+                    curve.removeAll(curve.subList(0, round((float) ((curve.size() - 1) * razv - super.getWidth()) / razv) - 1));
 
             });
         }

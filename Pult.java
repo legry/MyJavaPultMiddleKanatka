@@ -9,12 +9,11 @@ import java.awt.*;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.util.ArrayList;
-import java.util.Random;
+import java.util.*;
 import java.util.Timer;
-import java.util.TimerTask;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static java.lang.Math.*;
 
@@ -38,6 +37,7 @@ class Pult extends JFrame {
         closeport.setEnabled(false);
         //JLabel amperaj = new JLabel("0.0");
         byte[] dataAccume = new byte[0];
+        ArrayList<ArrayList<Integer>> curves = new ArrayList<>(1);
         openport.addActionListener(e -> {
             serialPort = new SerialPort((String) comPortList.getSelectedItem());
             try {
@@ -49,14 +49,14 @@ class Pult extends JFrame {
                         SerialPort.PARITY_NONE);
                 serialPort.setEventsMask(SerialPort.MASK_RXCHAR);
                 serialPort.addEventListener(serialPortEvent -> {
-                    /*if (serialPortEvent.isRXCHAR()) {
+                    if (serialPortEvent.isRXCHAR()) {
                         try {
                             byte[] inData = serialPort.readBytes(serialPortEvent.getEventValue());
-                            //Stream.concat(Stream.of(dataAccume), Stream.of(inData)).filter(x -> x.equals())
+
                         } catch (SerialPortException e1) {
                             e1.printStackTrace();
                         }
-                    }*/
+                    }
                 });
                 openport.setEnabled(false);
                 closeport.setEnabled(true);
