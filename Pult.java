@@ -1,21 +1,16 @@
 import jssc.SerialPort;
+import jssc.SerialPortEvent;
+import jssc.SerialPortEventListener;
 import jssc.SerialPortException;
 import net.miginfocom.swing.MigLayout;
 
 import javax.swing.*;
-import javax.swing.border.BevelBorder;
 import javax.swing.border.Border;
 import java.awt.*;
 import java.awt.event.ActionListener;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.util.*;
+import java.util.ArrayList;
 import java.util.Timer;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-import java.util.stream.Stream;
-
-import static java.lang.Math.*;
+import java.util.TimerTask;
 
 
 class Pult extends JFrame {
@@ -24,8 +19,7 @@ class Pult extends JFrame {
     private JSlider ust = new JSlider(JSlider.HORIZONTAL, 5, 50, 20);
     private JRadioButton[] radioButton = new JRadioButton[3];
     volatile private byte[] data = new byte[2];
-    private Random rnd = new Random();
-    //volatile private boolean setOk = true, mseUst = false;
+    volatile private boolean setOk = true;
     Pult() throws HeadlessException {
         super("Пульт");
         this.setBounds(300, 300, 550, 400);
@@ -36,8 +30,7 @@ class Pult extends JFrame {
         JButton closeport = new JButton("Закрыть порт");
         closeport.setEnabled(false);
         //JLabel amperaj = new JLabel("0.0");
-        byte[] dataAccume = new byte[0];
-        ArrayList<ArrayList<Integer>> curves = new ArrayList<>(1);
+        Oscil oscil = new Oscil();
         openport.addActionListener(e -> {
             serialPort = new SerialPort((String) comPortList.getSelectedItem());
             try {
@@ -48,13 +41,26 @@ class Pult extends JFrame {
                         SerialPort.STOPBITS_1,
                         SerialPort.PARITY_NONE);
                 serialPort.setEventsMask(SerialPort.MASK_RXCHAR);
-                serialPort.addEventListener(serialPortEvent -> {
-                    if (serialPortEvent.isRXCHAR()) {
-                        try {
-                            byte[] inData = serialPort.readBytes(serialPortEvent.getEventValue());
-
-                        } catch (SerialPortException e1) {
-                            e1.printStackTrace();
+                serialPort.addEventListener(new SerialPortEventListener() {
+                    ArrayList<ArrayList<Integer>> curves = new ArrayList<>(1);
+                    DataPacks dataPacks = new DataPacks(curves);
+                    @Override
+                    public void serialEvent(SerialPortEvent serialPortEvent) {
+                        if (serialPortEvent.isRXCHAR()) {
+                            try {
+                                byte[] inData = serialPort.readBytes(serialPortEvent.getEventValue());
+                                for (byte bt : inData) {
+                                    if (dataPacks.isEndOk()) {
+                                        dataPacks = new DataPacks(curves);
+                                        if (setOk) {
+                                            oscil.addPoints(curves);
+                                        }
+                                    }
+                                    dataPacks.addByte(bt);
+                                }
+                            } catch (SerialPortException e1) {
+                                e1.printStackTrace();
+                            }
                         }
                     }
                 });
@@ -91,7 +97,8 @@ class Pult extends JFrame {
         JPopupMenu popup;
         popup = new JPopupMenu();
         popup.add(new JMenuItem("Свойства графиков"));
-        Oscil oscil = new Oscil();
+
+
         oscil.setSize(getWidth()-100,100);
         JPanel panOscil = new JPanel(new MigLayout());
         panOscil.setSize(getWidth(), 150);
@@ -176,7 +183,8 @@ class Pult extends JFrame {
                     }
                 }*/
                 oscil.setRazv(ustrazv.getValue());
-                ArrayList<ArrayList<Integer>> curves = new ArrayList<>();
+                setOk = true;
+                /*ArrayList<ArrayList<Integer>> curves = new ArrayList<>();
 
                 curves.add(IntStream.rangeClosed(0, 99).
                         map(x -> (int) round(abs(ust.getValue()*sin(2*PI*ustfreq.getValue()*((double) x/100))))).
@@ -190,7 +198,7 @@ class Pult extends JFrame {
                         map(x -> (int) round(ust.getValue()*sin(2*PI*(ustfreq.getValue()/2)*((double) x/100)))).
                         boxed().
                         collect(Collectors.toCollection(ArrayList::new)));
-                oscil.addPoints(curves);
+                oscil.addPoints(curves);*/
             }
         };
         timer.schedule(timerTask, 0, 300);
