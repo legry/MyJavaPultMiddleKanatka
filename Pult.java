@@ -1,25 +1,22 @@
 import jssc.SerialPort;
-import jssc.SerialPortEvent;
-import jssc.SerialPortEventListener;
 import jssc.SerialPortException;
 import net.miginfocom.swing.MigLayout;
 
 import javax.swing.*;
-import javax.swing.border.Border;
 import java.awt.*;
-import java.awt.event.ActionListener;
-import java.util.ArrayList;
-import java.util.Timer;
-import java.util.TimerTask;
-
+import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
+import java.io.IOException;
 
 class Pult extends JFrame {
+    private byte[] inData = new byte[3];
     private SerialPort serialPort;
     private ComPortList comPortList = new ComPortList();
     private JSlider ust = new JSlider(JSlider.HORIZONTAL, 5, 50, 20);
     private JRadioButton[] radioButton = new JRadioButton[3];
-    volatile private byte[] data = new byte[2];
-    volatile private boolean setOk = true;
+    private byte[] data = new byte[2];
+    private boolean wrtOk = false;
+
     Pult() throws HeadlessException {
         super("Пульт");
         this.setBounds(300, 300, 550, 400);
@@ -28,9 +25,34 @@ class Pult extends JFrame {
         add(comPortList, "gap");
         JButton openport = new JButton("Открыть порт");
         JButton closeport = new JButton("Закрыть порт");
+        JLabel amperaj = new JLabel("0.0");
+        Thread wrt = new Thread(() -> {
+            while (true) {
+                if (wrtOk) {
+                    try {
+                        int amp = new
+                                DataInputStream(new ByteArrayInputStream(inData, 0, 2)).readUnsignedShort();
+                        amperaj.setText(String.valueOf(amp));
+                    } catch (IOException e1) {
+                        e1.printStackTrace();
+                    }
+                    data[0] = (byte) ust.getValue();
+                    data[1] = (byte) ((radioButton[0].isSelected()) ? data[1] | (1 << 1) : data[1] & ~(1 << 1));
+                    data[1] = (byte) ((radioButton[2].isSelected()) ? data[1] | (1 << 2) : data[1] & ~(1 << 2));
+                    try {
+                        Thread.sleep(5);
+                        if (serialPort.isOpened())
+                        serialPort.writeBytes(data);
+                    } catch (SerialPortException | InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    wrtOk = false;
+                }
+            }
+        });
+        wrt.setDaemon(true);
+        wrt.start();
         closeport.setEnabled(false);
-        //JLabel amperaj = new JLabel("0.0");
-        Oscil oscil = new Oscil();
         openport.addActionListener(e -> {
             serialPort = new SerialPort((String) comPortList.getSelectedItem());
             try {
@@ -41,36 +63,24 @@ class Pult extends JFrame {
                         SerialPort.STOPBITS_1,
                         SerialPort.PARITY_NONE);
                 serialPort.setEventsMask(SerialPort.MASK_RXCHAR);
-                serialPort.addEventListener(new SerialPortEventListener() {
-                    ArrayList<ArrayList<Integer>> curves = new ArrayList<>(1);
-                    DataPacks dataPacks = new DataPacks(curves);
-                    @Override
-                    public void serialEvent(SerialPortEvent serialPortEvent) {
-                        if (serialPortEvent.isRXCHAR()) {
-                            try {
-                                byte[] inData = serialPort.readBytes(serialPortEvent.getEventValue());
-                                for (byte bt : inData) {
-                                    if (dataPacks.isEndOk()) {
-                                        dataPacks = new DataPacks(curves);
-                                        if (setOk) {
-                                            oscil.addPoints(curves);
-                                        }
-                                    }
-                                    dataPacks.addByte(bt);
-                                }
-                            } catch (SerialPortException e1) {
-                                e1.printStackTrace();
-                            }
+                serialPort.addEventListener(serialPortEvent -> {
+                    if (serialPortEvent.isRXCHAR() || (serialPortEvent.getEventValue() == 3)) {
+                        try {
+                            inData = serialPort.readBytes(3);
+                            wrtOk = true;
+                        } catch (SerialPortException e1) {
+                            e1.printStackTrace();
                         }
                     }
                 });
+                wrtOk = true;
                 openport.setEnabled(false);
                 closeport.setEnabled(true);
             } catch (SerialPortException e1) {
                 e1.printStackTrace();
             }
         });
-        add(openport, "gap 10mm");
+        add(openport, "gap");
         closeport.addActionListener(e -> {
             if (serialPort != null) {
                 if (serialPort.isOpened()) {
@@ -85,74 +95,26 @@ class Pult extends JFrame {
             }
         });
         add(closeport, "gap, wrap");
-        /*Font font = new Font("Times New Roman", Font.PLAIN, 72);
-        amperaj.setFont(font);*/
-
-        JSlider ustfreq = new JSlider(JSlider.HORIZONTAL, 1, 10, 5);
-        ustfreq.setMinorTickSpacing(1);
-        ustfreq.setMajorTickSpacing(1);
-        ustfreq.setPaintTicks(true);
-        ustfreq.setPaintLabels(true);
-        ustfreq.addMouseWheelListener(e -> ustfreq.setValue(ustfreq.getValue() + e.getWheelRotation()));
-        JPopupMenu popup;
-        popup = new JPopupMenu();
-        popup.add(new JMenuItem("Свойства графиков"));
-
-
-        oscil.setSize(getWidth()-100,100);
-        JPanel panOscil = new JPanel(new MigLayout());
-        panOscil.setSize(getWidth(), 150);
-        panOscil.add(oscil, "align 50% 50%");
-        panOscil.setComponentPopupMenu(popup);
-        Border etched = BorderFactory.createEtchedBorder();
-        Border titled = BorderFactory.createTitledBorder(etched, "Осциллограф");
-        panOscil.setBorder(titled);
-        add(panOscil, "span, align 50%");
+        Font font = new Font("Times New Roman", Font.PLAIN, 72);
+        amperaj.setFont(font);
+        add(amperaj, "span, align 50% 50%, wrap");
         ust.setMinorTickSpacing(1);
         ust.setMajorTickSpacing(5);
         ust.setPaintTicks(true);
         ust.setPaintLabels(true);
         ust.addMouseWheelListener(e -> ust.setValue(ust.getValue() + e.getWheelRotation()));
-
-        JLabel ampl = new JLabel("Изменение амплитуды");
-        ampl.setLabelFor(ust);
-        add(ampl, "wrap");
-        add(ust, "span, align 50%");
-
-        JLabel freq = new JLabel("Изменение частоты");
-        freq.setLabelFor(ustfreq);
-        add(freq, "wrap");
-        add(ustfreq, "span, align 50%");
-
-        JSlider ustrazv = new JSlider(JSlider.HORIZONTAL, 0, 100, 5);
-        ustrazv.setMinorTickSpacing(5);
-        ustrazv.setMajorTickSpacing(10);
-        ustrazv.setPaintTicks(true);
-        ustrazv.setPaintLabels(true);
-        ustrazv.addMouseWheelListener(e -> ustrazv.setValue(ustrazv.getValue() + e.getWheelRotation()));
-
-        JLabel razr = new JLabel("Изменение развертки");
-        razr.setLabelFor(ustrazv);
-        add(razr, "wrap");
-        add(ustrazv, "span, align 50%");
-
+        add(ust, "span, align 50% 50%, wrap");
         JPanel hodPanel = new JPanel();
         hodPanel.setLayout(new MigLayout());
         String[] hodTitles = new String[]{"Вперед", "Нейтраль", "Назад"};
-        ActionListener hodListener = e -> {
-                data[1] = (byte) ((radioButton[0].isSelected()) ? data[1] | (1 << 1) : data[1] & ~(1 << 1));
-                data[1] = (byte) ((radioButton[2].isSelected()) ? data[1] | (1 << 2) : data[1] & ~(1 << 2));
-
-        };
         ButtonGroup hod = new ButtonGroup();
         for (int i = 0; i < 3; i++) {
             radioButton[i] = new JRadioButton(hodTitles[i]);
             if (i == 1) radioButton[i].setSelected(true);
             hod.add(radioButton[i]);
             if (i < 2)
-            hodPanel.add(radioButton[i], "wrap");
+                hodPanel.add(radioButton[i], "wrap");
             else hodPanel.add(radioButton[i]);
-            radioButton[i].addActionListener(hodListener);
         }
         JPanel valanPanel = new JPanel();
         valanPanel.setLayout(new MigLayout());
@@ -164,44 +126,6 @@ class Pult extends JFrame {
         valanPanel.add(stop);
         add(hodPanel, "span 2");
         add(valanPanel, "span 2");
-        Timer timer = new Timer(true);
-        TimerTask timerTask = new TimerTask() {
-            @Override
-            public void run() {
-/*                if (serialPort != null) {
-                    if (serialPort.isOpened()) {
-                        data[0] = (byte) floor(150*ust.getValue()/50);
-                        try {
-                            if (setOk) {
-                                serialPort.writeBytes(data);
-                            } else {
-                                setOk = false;
-                            }
-                        } catch (SerialPortException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                }*/
-                oscil.setRazv(ustrazv.getValue());
-                setOk = true;
-                /*ArrayList<ArrayList<Integer>> curves = new ArrayList<>();
-
-                curves.add(IntStream.rangeClosed(0, 99).
-                        map(x -> (int) round(abs(ust.getValue()*sin(2*PI*ustfreq.getValue()*((double) x/100))))).
-                        boxed().
-                        collect(Collectors.toCollection(ArrayList::new)));
-                curves.add(IntStream.rangeClosed(0, 99).
-                        map(x -> (int) round(ust.getValue()*cos(2*PI*ustfreq.getValue()*((double) x/100)))).
-                        boxed().
-                        collect(Collectors.toCollection(ArrayList::new)));
-                curves.add(IntStream.rangeClosed(0, 99).
-                        map(x -> (int) round(ust.getValue()*sin(2*PI*(ustfreq.getValue()/2)*((double) x/100)))).
-                        boxed().
-                        collect(Collectors.toCollection(ArrayList::new)));
-                oscil.addPoints(curves);*/
-            }
-        };
-        timer.schedule(timerTask, 0, 300);
         pack();
         setResizable(false);
         setVisible(true);
