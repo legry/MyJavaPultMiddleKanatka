@@ -26,6 +26,11 @@ class Pult extends JFrame {
         JButton openport = new JButton("Открыть порт");
         JButton closeport = new JButton("Закрыть порт");
         JLabel amperaj = new JLabel("0.0");
+        JPopupMenu ampCorr = new JPopupMenu();
+        ampCorr.add("Калибровка").addActionListener(e -> {
+            System.out.append(JOptionPane.showInputDialog(Pult.this, "Введите коэффициент", 0));
+        });
+        amperaj.setComponentPopupMenu(ampCorr);
         Thread wrt = new Thread(() -> {
             while (true) {
                 if (wrtOk) {
