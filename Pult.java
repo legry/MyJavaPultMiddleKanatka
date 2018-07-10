@@ -32,165 +32,155 @@ class Pult extends JFrame {
         JLabel amperaj = new JLabel("0.0");
         JPopupMenu ampCorr = new JPopupMenu();
         InputStream is = null;
-        File file = new File("C;/configPult.txt");
-        if (!file.exists()) {
-            try {
-                if (file.createNewFile()) {
-                    is = new FileInputStream("");
-                    properties.load(is);
-                    if (properties.stringPropertyNames().isEmpty()) {
-                        properties.setProperty("val", String.valueOf(val));
-                        properties.setProperty("ampval", String.valueOf(ampval));
-                    } else {
-                        val = Float.parseFloat(properties.getProperty("val"));
-                        ampval = Integer.parseInt(properties.getProperty("ampval"));
-                    }
-                }
-                } catch(IOException e){
-                    e.printStackTrace();
-                }  finally {
-                if (is != null) {
-                    try {
-                        is.close();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
-
-            }
-
-        }
+        File file = new File("configPult.txt");
         try {
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-            ampCorr.add("Калибровка").addActionListener(e -> {
-                String res = JOptionPane.showInputDialog("Введите значения", 0);
-                val = Float.parseFloat(res);
-                ampval = amp;
-                try {
-                    os = new FileOutputStream("config.properties");
+            if (file.exists() || file.createNewFile()) {
+                is = new FileInputStream(file);
+                properties.load(is);
+                if (properties.stringPropertyNames().isEmpty()) {
                     properties.setProperty("val", String.valueOf(val));
                     properties.setProperty("ampval", String.valueOf(ampval));
-                    properties.store(os, "");
-                } catch (IOException e1) {
-                    e1.printStackTrace();
-                } finally {
-                    if (os != null) {
-                        try {
-                            os.close();
-                        } catch (IOException e2) {
-                            e2.printStackTrace();
-                        }
-                    }
+                } else {
+                    val = Float.parseFloat(properties.getProperty("val"));
+                    ampval = Integer.parseInt(properties.getProperty("ampval"));
                 }
-            });
-            amperaj.setComponentPopupMenu(ampCorr);
-            Thread wrt = new Thread(() -> {
-                while (true) {
-                    if (wrtOk) {
-                        try {
-                            amp = new
-                                    DataInputStream(new ByteArrayInputStream(inData, 0, 2)).readUnsignedShort();
-
-                            amperaj.setText(String.valueOf(amp * val / ampval));
-                        } catch (IOException e1) {
-                            e1.printStackTrace();
-                        }
-                        data[0] = (byte) ust.getValue();
-                        data[1] = (byte) ((radioButton[0].isSelected()) ? data[1] | (1 << 1) : data[1] & ~(1 << 1));
-                        data[1] = (byte) ((radioButton[2].isSelected()) ? data[1] | (1 << 2) : data[1] & ~(1 << 2));
-                        try {
-                            Thread.sleep(5);
-                            if (serialPort.isOpened())
-                                serialPort.writeBytes(data);
-                        } catch (SerialPortException | InterruptedException e) {
-                            e.printStackTrace();
-                        }
-                        wrtOk = false;
-                    }
-                }
-            });
-            wrt.setDaemon(true);
-            wrt.start();
-            closeport.setEnabled(false);
-            openport.addActionListener(e -> {
-                serialPort = new SerialPort((String) comPortList.getSelectedItem());
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if (is != null) {
                 try {
-                    serialPort.openPort();
-                    serialPort.setParams(
-                            SerialPort.BAUDRATE_38400,
-                            SerialPort.DATABITS_8,
-                            SerialPort.STOPBITS_1,
-                            SerialPort.PARITY_NONE);
-                    serialPort.setEventsMask(SerialPort.MASK_RXCHAR);
-                    serialPort.addEventListener(serialPortEvent -> {
-                        if (serialPortEvent.isRXCHAR() || (serialPortEvent.getEventValue() == 3)) {
-                            try {
-                                inData = serialPort.readBytes(3);
-                                wrtOk = true;
-                            } catch (SerialPortException e1) {
-                                e1.printStackTrace();
-                            }
-                        }
-                    });
-                    wrtOk = true;
-                    openport.setEnabled(false);
-                    closeport.setEnabled(true);
-                } catch (SerialPortException e1) {
-                    e1.printStackTrace();
+                    is.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
-            });
-            add(openport, "gap");
-            closeport.addActionListener(e -> {
-                if (serialPort != null) {
-                    if (serialPort.isOpened()) {
+            }
+        }
+        ampCorr.add("Калибровка").addActionListener(e -> {
+            String res = JOptionPane.showInputDialog("Введите значения", 0);
+            val = Float.parseFloat(res);
+            ampval = amp;
+            try {
+                os = new FileOutputStream("configPult.txt");
+                properties.setProperty("val", String.valueOf(val));
+                properties.setProperty("ampval", String.valueOf(ampval));
+                properties.store(os, "");
+            } catch (IOException e1) {
+                e1.printStackTrace();
+            } finally {
+                if (os != null) {
+                    try {
+                        os.close();
+                    } catch (IOException e2) {
+                        e2.printStackTrace();
+                    }
+                }
+            }
+        });
+        amperaj.setComponentPopupMenu(ampCorr);
+        Thread wrt = new Thread(() -> {
+            while (true) {
+                if (wrtOk) {
+                    try {
+                        amp = new
+                                DataInputStream(new ByteArrayInputStream(inData, 0, 2)).readUnsignedShort();
+
+                        amperaj.setText(String.format("%.3f", (float) (amp * val / ampval)));
+                    } catch (IOException e1) {
+                        e1.printStackTrace();
+                    }
+                    data[0] = (byte) ust.getValue();
+                    data[1] = (byte) ((radioButton[0].isSelected()) ? data[1] | (1 << 1) : data[1] & ~(1 << 1));
+                    data[1] = (byte) ((radioButton[2].isSelected()) ? data[1] | (1 << 2) : data[1] & ~(1 << 2));
+                    try {
+                        Thread.sleep(5);
+                        if (serialPort.isOpened())
+                            serialPort.writeBytes(data);
+                    } catch (SerialPortException | InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    wrtOk = false;
+                }
+            }
+        });
+        wrt.setDaemon(true);
+        wrt.start();
+        closeport.setEnabled(false);
+        openport.addActionListener(e -> {
+            serialPort = new SerialPort((String) comPortList.getSelectedItem());
+            try {
+                serialPort.openPort();
+                serialPort.setParams(
+                        SerialPort.BAUDRATE_38400,
+                        SerialPort.DATABITS_8,
+                        SerialPort.STOPBITS_1,
+                        SerialPort.PARITY_NONE);
+                serialPort.setEventsMask(SerialPort.MASK_RXCHAR);
+                serialPort.addEventListener(serialPortEvent -> {
+                    if (serialPortEvent.isRXCHAR() || (serialPortEvent.getEventValue() == 3)) {
                         try {
-                            serialPort.closePort();
-                            openport.setEnabled(true);
-                            closeport.setEnabled(false);
+                            inData = serialPort.readBytes(3);
+                            wrtOk = true;
                         } catch (SerialPortException e1) {
                             e1.printStackTrace();
                         }
                     }
-                }
-            });
-            add(closeport, "gap, wrap");
-            Font font = new Font("Times New Roman", Font.PLAIN, 72);
-            amperaj.setFont(font);
-            add(amperaj, "span, align 50% 50%, wrap");
-            ust.setMinorTickSpacing(1);
-            ust.setMajorTickSpacing(5);
-            ust.setPaintTicks(true);
-            ust.setPaintLabels(true);
-            ust.addMouseWheelListener(e -> ust.setValue(ust.getValue() + e.getWheelRotation()));
-            add(ust, "span, align 50% 50%, wrap");
-            JPanel hodPanel = new JPanel();
-            hodPanel.setLayout(new MigLayout());
-            String[] hodTitles = new String[]{"Вперед", "Нейтраль", "Назад"};
-            ButtonGroup hod = new ButtonGroup();
-            for (int i = 0; i < 3; i++) {
-                radioButton[i] = new JRadioButton(hodTitles[i]);
-                if (i == 1) radioButton[i].setSelected(true);
-                hod.add(radioButton[i]);
-                if (i < 2)
-                    hodPanel.add(radioButton[i], "wrap");
-                else hodPanel.add(radioButton[i]);
+                });
+                wrtOk = true;
+                openport.setEnabled(false);
+                closeport.setEnabled(true);
+            } catch (SerialPortException e1) {
+                e1.printStackTrace();
             }
-            JPanel valanPanel = new JPanel();
-            valanPanel.setLayout(new MigLayout());
-            JButton start = new JButton("Пуск");
-            start.addActionListener(e -> data[1] |= 1);
-            valanPanel.add(start, "wrap");
-            JButton stop = new JButton("Стоп");
-            stop.addActionListener(e -> data[1] &= ~1);
-            valanPanel.add(stop);
-            add(hodPanel, "span 2");
-            add(valanPanel, "span 2");
-            pack();
-            setResizable(false);
-            setVisible(true);
+        });
+        add(openport, "gap");
+        closeport.addActionListener(e -> {
+            if (serialPort != null) {
+                if (serialPort.isOpened()) {
+                    try {
+                        serialPort.closePort();
+                        openport.setEnabled(true);
+                        closeport.setEnabled(false);
+                    } catch (SerialPortException e1) {
+                        e1.printStackTrace();
+                    }
+                }
+            }
+        });
+        add(closeport, "gap, wrap");
+        Font font = new Font("Times New Roman", Font.PLAIN, 72);
+        amperaj.setFont(font);
+        add(amperaj, "span, align 50% 50%, wrap");
+        ust.setMinorTickSpacing(1);
+        ust.setMajorTickSpacing(5);
+        ust.setPaintTicks(true);
+        ust.setPaintLabels(true);
+        ust.addMouseWheelListener(e -> ust.setValue(ust.getValue() + e.getWheelRotation()));
+        add(ust, "span, align 50% 50%, wrap");
+        JPanel hodPanel = new JPanel();
+        hodPanel.setLayout(new MigLayout());
+        String[] hodTitles = new String[]{"Вперед", "Нейтраль", "Назад"};
+        ButtonGroup hod = new ButtonGroup();
+        for (int i = 0; i < 3; i++) {
+            radioButton[i] = new JRadioButton(hodTitles[i]);
+            if (i == 1) radioButton[i].setSelected(true);
+            hod.add(radioButton[i]);
+            if (i < 2)
+                hodPanel.add(radioButton[i], "wrap");
+            else hodPanel.add(radioButton[i]);
         }
+        JPanel valanPanel = new JPanel();
+        valanPanel.setLayout(new MigLayout());
+        JButton start = new JButton("Пуск");
+        start.addActionListener(e -> data[1] |= 1);
+        valanPanel.add(start, "wrap");
+        JButton stop = new JButton("Стоп");
+        stop.addActionListener(e -> data[1] &= ~1);
+        valanPanel.add(stop);
+        add(hodPanel, "span 2");
+        add(valanPanel, "span 2");
+        pack();
+        setResizable(false);
+        setVisible(true);
     }
+}
