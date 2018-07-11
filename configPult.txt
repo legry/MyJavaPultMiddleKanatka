@@ -1,4 +1,4 @@
 #
-#Wed Jul 11 07:12:58 MSK 2018
-ampval=7786
+#Wed Jul 11 20:08:53 MSK 2018
+ampval=7778
 val=3.0

@@ -11,10 +11,10 @@ import static java.lang.Math.round;
 
 class Pult extends JFrame {
     private int amp;
-    private byte[] inData = new byte[3];
+    private byte[] inData = new byte[2];
     private SerialPort serialPort;
     private ComPortList comPortList = new ComPortList();
-    private JSlider ust = new JSlider(JSlider.HORIZONTAL, 5, 50, 20);
+    private JSlider ust = new JSlider(JSlider.HORIZONTAL, 1, 10, 3);
     private JRadioButton[] radioButton = new JRadioButton[3];
     private byte data;
     private boolean wrtOk = false;
@@ -125,9 +125,9 @@ class Pult extends JFrame {
                         SerialPort.PARITY_NONE);
                 serialPort.setEventsMask(SerialPort.MASK_RXCHAR);
                 serialPort.addEventListener(serialPortEvent -> {
-                    if (serialPortEvent.isRXCHAR() || (serialPortEvent.getEventValue() == 3)) {
+                    if (serialPortEvent.isRXCHAR() || (serialPortEvent.getEventValue() == 2)) {
                         try {
-                            inData = serialPort.readBytes(3);
+                            inData = serialPort.readBytes(2);
                             wrtOk = true;
                         } catch (SerialPortException e1) {
                             e1.printStackTrace();
@@ -159,8 +159,8 @@ class Pult extends JFrame {
         Font font = new Font("Times New Roman", Font.PLAIN, 72);
         amperaj.setFont(font);
         add(amperaj, "span, align 50% 50%, wrap");
-        ust.setMinorTickSpacing(1);
-        ust.setMajorTickSpacing(5);
+        //ust.setMinorTickSpacing(1);
+        //ust.setMajorTickSpacing(5);
         ust.setPaintTicks(true);
         ust.setPaintLabels(true);
         ust.addMouseWheelListener(e -> ust.setValue(ust.getValue() + e.getWheelRotation()));
