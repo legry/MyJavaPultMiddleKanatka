@@ -7,6 +7,8 @@ import java.awt.*;
 import java.io.*;
 import java.util.Properties;
 
+import static java.lang.Math.round;
+
 class Pult extends JFrame {
     private int amp;
     private byte[] inData = new byte[3];
@@ -14,7 +16,7 @@ class Pult extends JFrame {
     private ComPortList comPortList = new ComPortList();
     private JSlider ust = new JSlider(JSlider.HORIZONTAL, 5, 50, 20);
     private JRadioButton[] radioButton = new JRadioButton[3];
-    private byte[] data = new byte[2];
+    private byte data;
     private boolean wrtOk = false;
     private float val;
     private int ampval;
@@ -89,13 +91,19 @@ class Pult extends JFrame {
                     } catch (IOException e1) {
                         e1.printStackTrace();
                     }
-                    data[0] = (byte) ust.getValue();
-                    data[1] = (byte) ((radioButton[0].isSelected()) ? data[1] | (1 << 1) : data[1] & ~(1 << 1));
-                    data[1] = (byte) ((radioButton[2].isSelected()) ? data[1] | (1 << 2) : data[1] & ~(1 << 2));
+                    int minustamp = round((float) (ust.getValue() - 0.5) * ampval / val);
+                    int maxustamp = round((float) (ust.getValue() + 0.5) * ampval / val);
+                    data = (byte) ((radioButton[0].isSelected()) ? data | (1 << 1) : data & ~(1 << 1));
+                    data = (byte) ((radioButton[2].isSelected()) ? data | (1 << 2) : data & ~(1 << 2));
                     try {
-                        Thread.sleep(5);
-                        if (serialPort.isOpened())
-                            serialPort.writeBytes(data);
+                        Thread.sleep(10);
+                        if (serialPort.isOpened()) {
+                            serialPort.writeByte((byte) (minustamp >> 8));
+                            serialPort.writeByte((byte) minustamp);
+                            serialPort.writeByte((byte) (maxustamp >> 8));
+                            serialPort.writeByte((byte) maxustamp);
+                            serialPort.writeByte(data);
+                        }
                     } catch (SerialPortException | InterruptedException e) {
                         e.printStackTrace();
                     }
@@ -172,10 +180,10 @@ class Pult extends JFrame {
         JPanel valanPanel = new JPanel();
         valanPanel.setLayout(new MigLayout());
         JButton start = new JButton("Пуск");
-        start.addActionListener(e -> data[1] |= 1);
+        start.addActionListener(e -> data |= 1);
         valanPanel.add(start, "wrap");
         JButton stop = new JButton("Стоп");
-        stop.addActionListener(e -> data[1] &= ~1);
+        stop.addActionListener(e -> data &= ~1);
         valanPanel.add(stop);
         add(hodPanel, "span 2");
         add(valanPanel, "span 2");
